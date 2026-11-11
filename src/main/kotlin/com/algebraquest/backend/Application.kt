@@ -48,6 +48,8 @@ fun Application.module(dataFile: File? = File(System.getenv("DATA_FILE") ?: "dat
     fun resource(name: String) = checkNotNull(javaClass.classLoader.getResourceAsStream(name)) { "No se encontró $name" }
         .bufferedReader(Charsets.UTF_8).use { it.readText() }
 
+    DatabaseFactory.init()
+
     val users = json.decodeFromString<List<StoredUser>>(resource("users.json"))
     require(users.map { it.username }.distinct().size == users.size) { "Usuarios duplicados" }
     require(users.all { it.role in setOf(ROLE_ADMIN, ROLE_SUPERVISOR, ROLE_ALUMNO) }) { "Rol inválido" }
