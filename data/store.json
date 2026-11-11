@@ -1,0 +1,18 @@
+{
+    "players": {
+        "alumno": {
+            "username": "alumno",
+            "displayName": "Estudiante",
+            "nivel": 1,
+            "xp": 0,
+            "xpMax": 100,
+            "monedas": 0,
+            "vidas": 3,
+            "vidasMax": 3,
+            "trofeos": [],
+            "completados": []
+        }
+    },
+    "log": [],
+    "devices": {}
+}
