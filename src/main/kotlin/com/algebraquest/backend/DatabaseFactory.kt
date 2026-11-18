@@ -73,6 +73,14 @@ object DatabaseFactory {
             conn.createStatement().use { stmt ->
                 stmt.executeUpdate(
                     """
+                    CREATE TABLE IF NOT EXISTS user_passwords (
+                        username VARCHAR(100) PRIMARY KEY,
+                        password_hash VARCHAR(100) NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                stmt.executeUpdate(
+                    """
                     CREATE TABLE IF NOT EXISTS app_storage (
                         storage_key VARCHAR(100) PRIMARY KEY,
                         json_data TEXT NOT NULL
@@ -82,6 +90,34 @@ object DatabaseFactory {
             }
         }
     }
+
+    /** Hash SHA-256 (hex) de la contraseña vigente en el servidor, o null si no hay override. */
+    fun getPasswordHash(username: String): String? = runCatching {
+        getConnection()?.use { conn ->
+            conn.prepareStatement("SELECT password_hash FROM user_passwords WHERE lower(username) = lower(?)").use { ps ->
+                ps.setString(1, username)
+                ps.executeQuery().use { rs -> if (rs.next()) rs.getString(1).trim().lowercase() else null }
+            }
+        }
+    }.onFailure { println("❌ Error leyendo contraseña de '$username': ${it.message}") }.getOrNull()
+
+    fun setPasswordHash(username: String, hash: String): Boolean = runCatching {
+        val sql = if (isPostgres) {
+            "INSERT INTO user_passwords (username, password_hash) VALUES (?, ?) " +
+                "ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash"
+        } else {
+            "INSERT INTO user_passwords (username, password_hash) VALUES (?, ?) " +
+                "ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash)"
+        }
+        getConnection()?.use { conn ->
+            conn.prepareStatement(sql).use { ps ->
+                ps.setString(1, username)
+                ps.setString(2, hash)
+                ps.executeUpdate()
+            }
+            true
+        } ?: false
+    }.onFailure { println("❌ Error guardando contraseña de '$username': ${it.message}") }.getOrDefault(false)
 
     /** Lee el JSON guardado bajo [key] o null si no existe / no hay BD. */
     fun load(key: String): String? = runCatching {
