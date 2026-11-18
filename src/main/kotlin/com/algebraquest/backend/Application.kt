@@ -6,6 +6,7 @@ import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.cors.routing.*
 import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.plugins.calllogging.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
@@ -29,7 +30,7 @@ fun main() {
 internal fun ApplicationCall.bearer(): String? =
     request.headers[HttpHeaders.Authorization]?.removePrefix("Bearer ")?.trim()?.takeIf { it.isNotEmpty() }
 
-/**  HOLA ESTA ES UNA PRUEBA DE SSH CLAVE comprobar el push     Valida el token y el rol; si falla ya respondió 401/403 y devuelve null. */
+/**  HOLA ESTA ES UNA PRUEBA DE SSH CLAVE comprobar el push Valida el token y el rol; si falla ya respondió 401/403 y devuelve null. */
 internal suspend fun ApplicationCall.requireAuth(store: GameStore, vararg roles: String): Session? {
     val s = store.session(bearer())
     if (s == null) {
@@ -56,6 +57,8 @@ fun Application.module(dataFile: File? = File(System.getenv("DATA_FILE") ?: "dat
     val worlds = json.decodeFromString<List<Mundo>>(resource("worlds.json"))
     val store = GameStore(users, worlds, dataFile)
 
+    // Registra cada petición de la app en los logs de Railway (método, ruta y código)
+    install(CallLogging) { filter { it.request.local.uri != "/health" } }
     install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true; encodeDefaults = true }) }
     install(CORS) {
         anyHost()

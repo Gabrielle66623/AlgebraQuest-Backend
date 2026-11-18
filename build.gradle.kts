@@ -12,6 +12,7 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.3.0")
     implementation("io.ktor:ktor-server-cors:3.3.0")
     implementation("io.ktor:ktor-server-status-pages:3.3.0")
+    implementation("io.ktor:ktor-server-call-logging:3.3.0")
     implementation("ch.qos.logback:logback-classic:1.5.18")
 
     //  CONEXIÓN A BASE DE DATOS EN RAILWAY
