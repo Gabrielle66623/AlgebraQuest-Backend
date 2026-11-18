@@ -27,6 +27,7 @@ private data class Persisted(
 /** Estado del juego: jugadores, bitácora de respuestas, dispositivos biométricos y sesiones. */
 class GameStore(val users: List<StoredUser>, val worlds: List<Mundo>, private val file: File? = null) {
     companion object {
+        const val DB_KEY = "game_state"
         const val SESSION_MS = 8L * 60 * 60 * 1000
         const val LIFE_COST_XP = 25
         val TROPHY_PRICES = mapOf("bronce" to 50, "plata" to 100, "oro" to 180, "campeon" to 300)
@@ -42,8 +43,9 @@ class GameStore(val users: List<StoredUser>, val worlds: List<Mundo>, private va
     private val random = SecureRandom()
 
     init {
-        file?.takeIf { it.exists() }?.let {
-            runCatching { json.decodeFromString<Persisted>(it.readText()) }.getOrNull()?.let { p ->
+        val raw = DatabaseFactory.load(DB_KEY) ?: file?.takeIf { it.exists() }?.readText()
+        raw?.let {
+            runCatching { json.decodeFromString<Persisted>(it) }.getOrNull()?.let { p ->
                 players.putAll(p.players); log.addAll(p.log)
                 p.devices.forEach { (u, h) -> devices[u] = h.toMutableSet() }
             }
@@ -51,14 +53,15 @@ class GameStore(val users: List<StoredUser>, val worlds: List<Mundo>, private va
     }
 
     private fun save() {
+        val text = json.encodeToString(
+            Persisted.serializer(),
+            Persisted(players.toMap(), log.toList(), devices.mapValues { it.value.toList() })
+        )
+        // Base de datos en Railway (persistente); el archivo queda como respaldo local
+        if (DatabaseFactory.isConnected && DatabaseFactory.save(DB_KEY, text)) return
         val f = file ?: return
         f.parentFile?.mkdirs()
-        f.writeText(
-            json.encodeToString(
-                Persisted.serializer(),
-                Persisted(players.toMap(), log.toList(), devices.mapValues { it.value.toList() })
-            )
-        )
+        f.writeText(text)
     }
 
     // ---------- Sesiones ----------
