@@ -65,11 +65,28 @@ class GameStore(val users: List<StoredUser>, val worlds: List<Mundo>, private va
     }
 
     // ---------- Sesiones ----------
-    fun findUser(username: String, password: String): StoredUser? =
-        users.firstOrNull {
-            it.username.equals(username.trim(), ignoreCase = true) &&
-                MessageDigest.isEqual(it.password.toByteArray(), password.toByteArray())
+    /** La contraseña guardada en Postgres (si existe) reemplaza a la de users.json. */
+    fun findUser(username: String, password: String): StoredUser? {
+        val u = users.firstOrNull { it.username.equals(username.trim(), ignoreCase = true) } ?: return null
+        val override = if (DatabaseFactory.isConnected) DatabaseFactory.getPasswordHash(u.username) else null
+        val ok = if (override != null) {
+            MessageDigest.isEqual(override.toByteArray(), sha256(password).toByteArray())
+        } else {
+            MessageDigest.isEqual(u.password.toByteArray(), password.toByteArray())
         }
+        return if (ok) u else null
+    }
+
+    /** Cambia la contraseña en el servidor y cierra las sesiones abiertas de ese usuario. */
+    fun changePassword(username: String, newPassword: String) {
+        val u = users.firstOrNull { it.username.equals(username.trim(), ignoreCase = true) }
+            ?: throw ApiException(HttpStatusCode.NotFound, "Usuario inexistente")
+        if (newPassword.length < 4) throw ApiException(HttpStatusCode.BadRequest, "La contraseña debe tener al menos 4 caracteres")
+        if (!DatabaseFactory.isConnected || !DatabaseFactory.setPasswordHash(u.username, sha256(newPassword))) {
+            throw ApiException(HttpStatusCode.ServiceUnavailable, "No se pudo guardar en la base de datos")
+        }
+        sessions.entries.removeIf { it.value.user.username == u.username }
+    }
 
     fun openSession(user: StoredUser, biometric: Boolean): LoginResponse {
         val now = System.currentTimeMillis()

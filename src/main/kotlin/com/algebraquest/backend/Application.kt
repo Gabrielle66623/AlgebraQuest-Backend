@@ -129,6 +129,7 @@ fun Application.module(dataFile: File? = File(System.getenv("DATA_FILE") ?: "dat
         playerRoutes(store)
         gameProgressRoutes(store)
         rankingRoutes(store)
+        passwordRoutes(store)
 
         // ---------------- Panel de Administrador ----------------
         get("/admin/overview") {
