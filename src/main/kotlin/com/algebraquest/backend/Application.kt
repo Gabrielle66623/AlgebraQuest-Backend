@@ -29,7 +29,7 @@ fun main() {
 internal fun ApplicationCall.bearer(): String? =
     request.headers[HttpHeaders.Authorization]?.removePrefix("Bearer ")?.trim()?.takeIf { it.isNotEmpty() }
 
-/**  comprobar el push     Valida el token y el rol; si falla ya respondió 401/403 y devuelve null. */
+/**  HOLA ESTA ES UNA PRUEBA DE SSH CLAVE comprobar el push     Valida el token y el rol; si falla ya respondió 401/403 y devuelve null. */
 internal suspend fun ApplicationCall.requireAuth(store: GameStore, vararg roles: String): Session? {
     val s = store.session(bearer())
     if (s == null) {
